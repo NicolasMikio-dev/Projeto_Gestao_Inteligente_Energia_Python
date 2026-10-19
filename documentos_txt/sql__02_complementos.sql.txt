@@ -1,0 +1,118 @@
+-- Execute APOS 01_banco_original.sql. Preserva integralmente as tabelas originais.
+USE gestao_inteligente_de_energia;
+
+CREATE TABLE IF NOT EXISTS Credencial (
+  ID_Cliente INT PRIMARY KEY,
+  Senha_Hash VARCHAR(255) NOT NULL,
+  FOREIGN KEY (ID_Cliente) REFERENCES Cliente(ID_Cliente) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Configuracao_Unidade (
+  ID_Unidade INT PRIMARY KEY,
+  Nome_Unidade VARCHAR(100) NOT NULL,
+  Tipo_Unidade ENUM('RESIDENCIA','COMERCIO') NOT NULL,
+  Tarifa_kWh DECIMAL(10,4) NOT NULL DEFAULT 0.9000,
+  FOREIGN KEY (ID_Unidade) REFERENCES Unidade_Consumidora(ID_Unidade) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Comodo (
+  ID_Comodo BIGINT AUTO_INCREMENT PRIMARY KEY,
+  ID_Unidade INT NOT NULL,
+  Nome_Comodo VARCHAR(80) NOT NULL,
+  FOREIGN KEY (ID_Unidade) REFERENCES Unidade_Consumidora(ID_Unidade) ON DELETE CASCADE,
+  INDEX idx_comodo_unidade (ID_Unidade)
+);
+
+CREATE TABLE IF NOT EXISTS Aparelho_Catalogo (
+  ID_Tipo INT AUTO_INCREMENT PRIMARY KEY,
+  Nome VARCHAR(100) NOT NULL UNIQUE,
+  Potencia_Referencia_W INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Aparelho (
+  ID_Aparelho BIGINT AUTO_INCREMENT PRIMARY KEY,
+  ID_Comodo BIGINT NOT NULL,
+  ID_Tipo INT NOT NULL,
+  Nome_Personalizado VARCHAR(100),
+  Potencia_W INT NOT NULL,
+  FOREIGN KEY (ID_Comodo) REFERENCES Comodo(ID_Comodo) ON DELETE CASCADE,
+  FOREIGN KEY (ID_Tipo) REFERENCES Aparelho_Catalogo(ID_Tipo),
+  INDEX idx_aparelho_comodo (ID_Comodo)
+);
+
+CREATE TABLE IF NOT EXISTS Consumo_Aparelho (
+  ID_Consumo BIGINT AUTO_INCREMENT PRIMARY KEY,
+  ID_Aparelho BIGINT NOT NULL,
+  Data_Hora DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  Duracao_Minutos INT NOT NULL,
+  Energia_kWh DECIMAL(14,6) NOT NULL,
+  Origem ENUM('SIMULACAO') NOT NULL DEFAULT 'SIMULACAO',
+  FOREIGN KEY (ID_Aparelho) REFERENCES Aparelho(ID_Aparelho) ON DELETE CASCADE,
+  INDEX idx_consumo_aparelho_data (ID_Aparelho, Data_Hora)
+);
+
+-- IoT desacoplado da tabela Medidor original, que exige cadastro de Fornecedor.
+CREATE TABLE IF NOT EXISTS Sensor_IoT (
+  ID_Sensor BIGINT AUTO_INCREMENT PRIMARY KEY,
+  ID_Comodo BIGINT NOT NULL,
+  Nome VARCHAR(100) NOT NULL,
+  Chave_SHA256 CHAR(64) NOT NULL,
+  FOREIGN KEY (ID_Comodo) REFERENCES Comodo(ID_Comodo) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Leitura_Sensor (
+  ID_Leitura BIGINT AUTO_INCREMENT PRIMARY KEY,
+  ID_Sensor BIGINT NOT NULL,
+  Data_Hora DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  Potencia_W DECIMAL(12,2) NOT NULL,
+  Duracao_Minutos INT NOT NULL,
+  Energia_kWh DECIMAL(14,6) NOT NULL,
+  FOREIGN KEY (ID_Sensor) REFERENCES Sensor_IoT(ID_Sensor) ON DELETE CASCADE,
+  INDEX idx_leitura_sensor_data (ID_Sensor, Data_Hora)
+);
+
+CREATE TABLE IF NOT EXISTS Fonte_Renovavel (
+  ID_Fonte BIGINT AUTO_INCREMENT PRIMARY KEY,
+  ID_Unidade INT NOT NULL,
+  Nome VARCHAR(100) NOT NULL,
+  Tipo ENUM('SOLAR','EOLICA','OUTRA') NOT NULL,
+  FOREIGN KEY (ID_Unidade) REFERENCES Unidade_Consumidora(ID_Unidade) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Geracao_Renovavel (
+  ID_Geracao BIGINT AUTO_INCREMENT PRIMARY KEY,
+  ID_Fonte BIGINT NOT NULL,
+  Data_Hora DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  Energia_kWh DECIMAL(14,6) NOT NULL,
+  FOREIGN KEY (ID_Fonte) REFERENCES Fonte_Renovavel(ID_Fonte) ON DELETE CASCADE,
+  INDEX idx_geracao_data (ID_Fonte, Data_Hora)
+);
+
+-- Estados brasileiros cadastrados para facilitar o registro da unidade.
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'São Paulo','SP','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='SP');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Rio de Janeiro','RJ','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='RJ');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Minas Gerais','MG','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='MG');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Paraná','PR','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='PR');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Rio Grande do Sul','RS','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='RS');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Santa Catarina','SC','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='SC');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Bahia','BA','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='BA');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Pernambuco','PE','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='PE');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Ceará','CE','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='CE');
+INSERT INTO Estado (Nome, Sigla, Pais)
+SELECT 'Distrito Federal','DF','Brasil' WHERE NOT EXISTS (SELECT 1 FROM Estado WHERE Sigla='DF');
+
+INSERT IGNORE INTO Aparelho_Catalogo (Nome, Potencia_Referencia_W) VALUES
+ ('Chuveiro elétrico',5500), ('Ar-condicionado',1400), ('Geladeira',150),
+ ('Máquina de lavar',800), ('Secadora de roupas',2200), ('Forno elétrico',1800),
+ ('Micro-ondas',1400), ('Air fryer',1500), ('Televisão',120), ('Computador',250),
+ ('Ventilador',80), ('Lâmpada LED',12), ('Ferro de passar',1200),
+ ('Aquecedor elétrico',1800), ('Freezer',180), ('Lava-louças',1600);

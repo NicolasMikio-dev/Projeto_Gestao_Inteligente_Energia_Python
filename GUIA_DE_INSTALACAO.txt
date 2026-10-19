@@ -1,0 +1,182 @@
+ENERGIA+ — GESTÃO INTELIGENTE DE ENERGIA
+API Python (Flask) + MySQL + HTML/CSS/JavaScript
+Guia para Windows / VS Code
+========================================================
+
+1. O QUE ESTE PROTÓTIPO IMPLEMENTA
+- Cadastro e login com hash seguro para a senha do responsável (CPF individual).
+- Cadastro de uma ou várias unidades (residência ou comércio) e seus endereços.
+- Cômodos apresentados como ABAS; cada um contém seus aparelhos.
+- Catálogo pronto com chuveiro, geladeira, ar-condicionado, máquina de lavar etc.
+- Potência editável em watts e simulação de minutos de uso.
+- Armazenamento de séries temporais, consumo diário/mensal e custo por cômodo.
+- Meta mensal e alertas em 80% e 100% do limite; alerta simples de pico IoT.
+- Projeção linear do consumo mensal e opção de salvá-la no banco original.
+- Cadastro de fontes renováveis e registro de energia gerada.
+- Endpoint para receber leituras IoT, autenticado com chave por sensor.
+- Interface atualiza indicadores a cada 30 segundos quando está aberta.
+
+IMPORTANTE: sem aparelho IoT ligado à API, o sistema só calcula estimativas;
+não mede fisicamente a energia da casa. Previsão é extrapolação simples,
+não treinamento de Inteligência Artificial. Preços são estimativas.
+
+2. PROGRAMAS NECESSÁRIOS
+- Python 3.11 ou superior, instalado no Windows e disponível no terminal.
+- MySQL Server 8.x, INICIADO, com usuário e senha conhecidos.
+- MySQL Workbench (opcional, recomendado para rodar o SQL).
+- Visual Studio Code e extensões Python e Pylance (Microsoft).
+- Navegador (Chrome, Edge, Firefox).
+Não é necessário instalar Java, Maven ou Node.js para EXECUTAR o projeto.
+
+3. BIBLIOTECAS PYTHON
+As dependências estão em requirements.txt:
+    Flask                 (servidor web/API e templates)
+    mysql-connector-python (conexão com MySQL)
+    python-dotenv         (lê configurações do arquivo .env)
+O hash de senhas usa werkzeug.security, instalado junto com Flask.
+
+4. ARQUIVOS E PASTAS
+Projeto_Energia_Python/
+  app.py                 # API Python + regras de negócio
+  requirements.txt       # Bibliotecas pip
+  .env.example           # Exemplo das variáveis de conexão
+  .gitignore             # Impede o envio do .env ao GitHub
+  sql/
+    01_banco_original.sql # Modelo SQL fornecido anteriormente
+    02_complementos.sql   # Somente tabelas novas, sem excluir originais
+  templates/
+    index.html           # Formulários + painel
+  static/
+    style.css            # Visual responsivo
+    app.js               # Integração frontend <-> API e abas
+  documentos_txt/        # Arquivos TXT espelhando os códigos
+
+5. PREPARAR O BANCO DE DADOS (ANTES DO PYTHON)
+- Inicie o serviço MySQL (MySQL80, por exemplo).
+- Entre no MySQL Workbench com uma conexão do usuário root (ou similar).
+- Abra sql/01_banco_original.sql e clique no ícone de executar TODO o script.
+- Abra sql/02_complementos.sql e execute TODO o script.
+- Se o banco gestao_inteligente_de_energia JÁ existir e contiver as tabelas
+  originais, NÃO execute novamente 01_banco_original.sql. Execute só 02.
+- As tabelas adicionais foram feitas para manter as originais intactas.
+- Atenção: se você executou complementos Java antigos neste mesmo banco,
+  revise as tabelas existentes antes de misturar projetos de versões diferentes.
+
+6. ABRIR E EXECUTAR PELO VS CODE (POWERSHELL)
+Abra a pasta Projeto_Energia_Python no VS Code (Arquivo > Abrir Pasta).
+No terminal integrado (Terminal > Novo Terminal):
+
+    py --version
+    py -m venv .venv
+    .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+    Copy-Item .env.example .env
+
+Abra o arquivo .env e altere, pelo menos:
+
+    DB_USER=root
+    DB_PASSWORD=SUA_SENHA_DO_MYSQL
+    SECRET_KEY=UMA_SEQUENCIA_GRANDE_E_ALEATORIA
+
+Gere uma chave de sessão aleatória com:
+    .\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_hex(32))"
+
+Copie a chave retornada para SECRET_KEY. Verifique DB_HOST/DB_PORT
+caso o MySQL não esteja em 127.0.0.1:3306.
+
+Depois execute:
+    .\.venv\Scripts\python.exe app.py
+
+No navegador, acesse:
+    http://127.0.0.1:5000
+
+Não abra templates/index.html diretamente nem pelo Live Server: a interface
+precisa ser servida pela aplicação Flask, que expõe as rotas /api/.
+
+7. PRIMEIRO USO, NA ORDEM
+1) Clique em Cadastrar; informe nome, CPF (11 dígitos), telefone, e-mail e senha.
+2) Cadastre uma unidade com nome, tipo, endereço, UF e tarifa R$/kWh.
+3) Crie os cômodos (Cozinha, Banheiro, Quarto, Escritório...): tornam-se abas.
+4) Dentro da aba, selecione o tipo de aparelho e confirme a potência.
+5) Clique em Simular uso e informe um tempo, em minutos.
+6) Observe o histórico por dia, total do cômodo, total da unidade e o custo.
+7) Cadastre uma meta e gere dados suficientes para disparar os alertas.
+8) Se quiser, cadastre uma fonte solar e registre a geração em kWh.
+9) Clique em Salvar previsão para preencher a tabela Previsao_Consumo.
+10) Você também pode cadastrar um SENSOR e integrar um dispositivo externo.
+
+Exemplo de cálculo: chuveiro 5.500 W ligado por 30 minutos:
+      energia_kWh = (potência_em_W × minutos) / 60000
+      energia_kWh = 5500 × 30 / 60000 = 2,75 kWh
+      custo com tarifa R$ 0,90 = R$ 2,475, aproximadamente R$ 2,48.
+
+8. TESTANDO A API IoT COM POWERSHELL (SEM HARDWARE)
+- Entre com um usuário no navegador.
+- Crie uma unidade, um cômodo e um sensor na parte inferior do painel.
+- Copie o número do sensor e a chave mostrada uma única vez.
+- Em OUTRO terminal PowerShell execute, substituindo ID e CHAVE:
+
+    $headers = @{"X-Sensor-Key" = "SUA_CHAVE_DO_SENSOR"}
+    $body = @{sensorId=1; potenciaW=1500; duracaoMinutos=2} | ConvertTo-Json
+    Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:5000/api/iot/leituras" -Headers $headers -ContentType "application/json" -Body $body
+
+O payload registra 1500 W por 2 minutos, portanto 0,05 kWh.
+Um ESP32 / medidor real pode enviar esses mesmos dados por HTTP POST.
+Na instalação local use localhost; um hardware em rede exige endereço
+acessível, firewall configurado e, em produção, HTTPS.
+
+9. PRINCIPAIS ENDPOINTS REST
+Método  Caminho                               Descrição
+POST    /api/auth/cadastro                   Nova conta
+POST    /api/auth/login                      Login
+POST    /api/auth/sair                       Logout
+GET     /api/auth/eu                         Sessão atual
+GET     /api/estados                         UFs cadastradas
+GET/POST /api/unidades                       Listar/criar casas ou empresas
+GET/POST /api/unidades/<id>/comodos           Listar/criar cômodos
+DELETE  /api/comodos/<id>                    Excluir cômodo/histórico
+GET     /api/catalogo                        Tipos de aparelhos
+GET/POST /api/comodos/<id>/aparelhos          Listar/criar aparelhos
+DELETE  /api/aparelhos/<id>                  Excluir aparelho/histórico
+POST    /api/aparelhos/<id>/simular           JSON: {"minutos":60}
+GET     /api/unidades/<id>/resumo             KPIs, cômodos, gráfico, alertas
+POST    /api/unidades/<id>/meta               JSON: {"limite":200}
+POST    /api/unidades/<id>/previsoes          Salva projeção do mês
+GET/POST /api/unidades/<id>/sensores          Gerenciar sensores
+POST    /api/iot/leituras                     Dados IoT e X-Sensor-Key
+GET/POST /api/unidades/<id>/renovaveis        Listar/criar fontes renováveis
+POST    /api/renovaveis/<id>/geracao          JSON: {"energiaKwh":2.5}
+
+10. COMO OS DADOS SÃO SOMADOS
+A tela seleciona um único modo para CADA CÔMODO por mês:
+- Se há leituras IoT no mês, mostra SOMENTE energia recebida dos sensores.
+- Se não há IoT, mostra SOMENTE a energia simulada dos aparelhos.
+Isso evita dupla contagem quando o mesmo consumo é simulado e medido.
+O consumo bruto é a soma dos cômodos nesse modo. O consumo líquido é
+max(0, bruto - geração renovável cadastrada). O valor estimado da energia
+é líquido × tarifa informada. Não inclui taxas ou impostos reais.
+
+11. LIMITAÇÕES, FUTURAS MELHORIAS E SEGURANÇA
+- É protótipo acadêmico; não substitui o medidor certificado nem a fatura.
+- Leituras enviadas pelo sensor representam consumo no INTERVALO declarado,
+  e não leituras cumulativas. Não reenvie a mesma leitura: faltam IDs idempotentes.
+- Alertas não enviam push/e-mail: são persistidos na tabela Alerta e exibidos
+  no painel. O pico de potência é um limiar didático fixo de 5.000 W por sensor.
+- A projeção linear melhora com mais dias de dados, mas não modela sazonalidade.
+- Excluir cômodos e aparelhos APAGA também o histórico ligado a eles.
+- Guarda senhas com hash, faz consultas parametrizadas e restringe o acesso
+  dos dados ao dono da unidade; nunca publique .env ou chave de sensor.
+- Para produção: HTTPS, SECRET_KEY seguro, proteção contra tentativas de
+  login, CSRF, backups, auditoria, validação CPF/CNPJ e implantação WSGI.
+- Leituras em Leituras_Tempo_Real/Medidor do esquema original permanecem
+  disponíveis para integração posterior; a demonstração IoT usa Sensor_IoT
+  e Leitura_Sensor para não exigir Fornecedor/Medidor no cadastro doméstico.
+
+12. ERROS COMUNS
+'Access denied for user': confira DB_USER/DB_PASSWORD no .env.
+'Can't connect to MySQL server': confirme se o serviço MySQL iniciou e a porta.
+'Unknown database': execute o SQL 01 (se o banco ainda não existir).
+'Table ... doesn't exist': execute 02_complementos.sql no mesmo banco.
+'No module named flask': instale requirements.txt no ambiente virtual certo.
+'py não é reconhecido': instale Python no Windows e reinicie o terminal.
+'Port 5000 is in use': feche o processo anterior ou altere a porta no app.py.
+'403/404 em cômodo ou unidade': recurso pode pertencer a outro usuário.

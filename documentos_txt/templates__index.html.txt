@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Energia+ | Gestão inteligente</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Página inicial Energia Mais"><span class="brand-icon">⚡</span> Energia<span class="brand-plus">+</span></a>
+    <div class="header-right"><span id="headerUser"></span><button id="logoutBtn" type="button" class="btn ghost hidden">Sair</button></div>
+  </header>
+  <main class="container">
+    <div id="flash" role="status" aria-live="polite"></div>
+    <section id="authView" class="auth-layout">
+      <div class="intro">
+        <p class="eyebrow">TECNOLOGIA A FAVOR DO CONSUMO CONSCIENTE</p>
+        <h1>Entenda sua energia. <em>Economize com inteligência.</em></h1>
+        <p>Cadastre sua casa ou comércio, organize os cômodos, adicione aparelhos e acompanhe estimativas de consumo em tempo real.</p>
+        <div class="intro-stats"><span>⌁ Histórico de consumo</span><span>◎ Metas e alertas</span><span>☀ Fontes renováveis</span></div>
+      </div>
+      <div class="panel auth-panel">
+        <div class="auth-switch"><button class="switch active" id="loginTab" type="button">Entrar</button><button class="switch" id="signupTab" type="button">Cadastrar</button></div>
+        <form id="loginForm" class="stack">
+          <h2>Bem-vindo de volta</h2>
+          <label>E-mail <input name="email" type="email" autocomplete="username" required></label>
+          <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
+          <button class="btn primary full">Entrar no painel</button>
+        </form>
+        <form id="signupForm" class="stack hidden">
+          <h2>Criar sua conta</h2>
+          <label>Nome do responsável <input name="nome" maxlength="100" required></label>
+          <label>E-mail <input name="email" type="email" autocomplete="username" required></label>
+          <label>CPF (11 dígitos) <input name="cpf" maxlength="14" inputmode="numeric" required></label>
+          <label>Telefone <input name="telefone" maxlength="15" required></label>
+          <label>Senha (mínimo 8 caracteres) <input name="senha" type="password" minlength="8" autocomplete="new-password" required></label>
+          <button class="btn primary full">Criar conta</button>
+          <p class="muted small">Para empresas, informe os dados do responsável. O tipo de unidade será definido em seguida.</p>
+        </form>
+      </div>
+    </section>
+    <section id="dashboardView" class="hidden">
+      <div class="page-heading"><div><p class="eyebrow">PAINEL DE GESTÃO</p><h1>Seu consumo de energia</h1><p class="muted">Controle os ambientes, compare gastos e acompanhe sua meta.</p></div><div class="unit-picker"><label for="unitSelect">Unidade selecionada</label><select id="unitSelect"></select><button class="btn outline" id="newUnitBtn" type="button">+ Nova unidade</button></div></div>
+      <form id="unitForm" class="panel form-grid hidden">
+        <div class="span2"><h2>Cadastrar casa ou comércio</h2><p class="muted small">Os campos de endereço respeitam a estrutura do seu banco de dados.</p></div>
+        <label>Nome da unidade <input name="nome" placeholder="Minha residência" maxlength="100" required></label>
+        <label>Tipo <select name="tipo"><option value="RESIDENCIA">Residência</option><option value="COMERCIO">Comércio / empresa</option></select></label>
+        <label>CEP <input name="cep" placeholder="00000-000" maxlength="9" required></label>
+        <label>Estado <select id="stateSelect" name="estadoId" required></select></label>
+        <label>Rua <input name="rua" required maxlength="100"></label>
+        <label>Número <input name="numero" required maxlength="10"></label>
+        <label>Complemento <input name="complemento" maxlength="100" placeholder="Opcional"></label>
+        <label>Tarifa por kWh (R$) <input name="tarifa" type="number" min="0" max="10" step="0.01" value="0.90" required></label>
+        <div class="span2 actions"><button class="btn primary">Salvar unidade</button><button class="btn ghost" id="cancelUnitBtn" type="button">Cancelar</button></div>
+      </form>
+      <div id="unitContent" class="hidden">
+        <div class="metrics" id="metricCards"></div>
+        <div class="main-grid">
+          <section class="panel"><div class="section-heading"><div><h2>Consumo por cômodo</h2><p class="muted small">Selecione uma aba para gerenciar os aparelhos.</p></div></div>
+            <div class="room-tabs" id="roomTabs" role="tablist" aria-label="Cômodos"></div>
+            <form id="roomForm" class="inline-form"><input name="nome" placeholder="Ex.: Cozinha, Quarto, Escritório" maxlength="80" required aria-label="Nome do cômodo"><button class="btn primary">+ Adicionar cômodo</button></form>
+            <div id="roomPanel"></div>
+          </section>
+          <aside class="side-stack">
+            <section class="panel"><h2>Meta mensal</h2><p id="goalInfo" class="muted"></p><form id="goalForm" class="inline-form"><input type="number" min="0.01" step="0.01" name="limite" placeholder="Meta em kWh" required aria-label="Meta mensal em quilowatt-hora"><button class="btn outline">Definir</button></form></section>
+            <section class="panel"><h2>Alertas</h2><div id="alertsList" class="alert-list"></div></section>
+          </aside>
+        </div>
+        <div class="main-grid bottom-grid">
+          <section class="panel"><div class="section-heading"><div><h2>Evolução diária do mês</h2><p class="muted small">Energia consumida (kWh) por dia com dados registrados.</p></div><button class="btn outline" id="forecastBtn" type="button">Salvar previsão</button></div><div class="chart" id="usageChart"></div><p class="muted small">Previsão simples: consumo até hoje ÷ dias transcorridos × dias do mês. Não é previsão por IA.</p></section>
+          <section class="panel"><h2>Energia renovável</h2><form id="sourceForm" class="stack"><label>Nome da fonte <input name="nome" placeholder="Ex.: Painéis solares" required></label><label>Tipo <select name="tipo"><option value="SOLAR">Solar</option><option value="EOLICA">Eólica</option><option value="OUTRA">Outra</option></select></label><button class="btn outline">+ Adicionar fonte</button></form><div id="sourceList" class="source-list"></div></section>
+        </div>
+        <section class="panel sensor-panel"><div><h2>Sensores IoT</h2><p class="muted small">Crie uma chave e envie medições à API. Requer um sensor real ou cliente HTTP externo.</p></div><form id="sensorForm" class="inline-form"><select id="sensorRoom" name="comodoId" required aria-label="Cômodo do sensor"></select><input name="nome" required placeholder="Nome do sensor" aria-label="Nome do sensor"><button class="btn outline">Criar sensor</button></form><div id="sensorList"></div><div id="sensorSecret" class="secret hidden" role="status"></div></section>
+        <p class="disclaimer">Valores simulados dependem da potência e do tempo informados. Gastos reais variam com os aparelhos, a tarifa da distribuidora, impostos e outras cobranças. Consumo líquido exibido = consumo estimado ou medido − geração cadastrada, limitado a zero.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
