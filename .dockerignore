@@ -1,0 +1,14 @@
+**
+!Dockerfile
+!requirements.txt
+!app.py
+!templates/
+!templates/**
+!static/
+!static/**
+!sql/
+!sql/*.sql
+!deploy/
+!deploy/inicializar_banco.py
+**/.env
+**/.env.*

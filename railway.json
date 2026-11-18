@@ -1,0 +1,11 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE"
+  },
+  "deploy": {
+    "preDeployCommand": ["python -m deploy.inicializar_banco"],
+    "healthcheckPath": "/api/estados",
+    "healthcheckTimeout": 120
+  }
+}
